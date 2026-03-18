@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文阅读助手 - AI+RAG系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #50c878;
+            --accent-color: #ff6b6b;
+            --background-dark: #1a1a2e;
+            --background-light: #16213e;
+            --text-light: #e8e8e8;
+            --text-dim: #a0a0a0;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--background-dark) 0%, var(--background-light) 100%);
+            color: var(--text-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: rgba(26, 26, 46, 0.95) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary-color) !important;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+        }
+
+        .card-header {
+            background: rgba(74, 144, 226, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: #357abd;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+        }
+
+        .btn-success {
+            background: var(--secondary-color);
+            border: none;
+        }
+
+        .btn-success:hover {
+            background: #3da35d;
+        }
+
+        .form-control, .form-select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-light);
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: var(--primary-color);
+            color: var(--text-light);
+            box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(74, 144, 226, 0.5);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: rgba(74, 144, 226, 0.1);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--secondary-color);
+            background: rgba(80, 200, 120, 0.1);
+        }
+
+        .document-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .document-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary-color);
+        }
+
+        .document-item.active {
+            background: rgba(74, 144, 226, 0.2);
+            border-color: var(--primary-color);
+        }
+
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            background: var(--primary-color);
+            margin-left: auto;
+        }
+
+        .message.assistant {
+            background: rgba(255, 255, 255, 0.1);
+            margin-right: auto;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner-border {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+
+        .tab-content {
+            padding: 1.5rem;
+        }
+
+        .nav-tabs {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-tabs .nav-link {
+            color: var(--text-dim);
+            border: none;
+            border-bottom: 2px solid transparent;
+            background: transparent;
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: var(--text-light);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            background: transparent;
+            border-color: var(--primary-color);
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .search-result {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .analysis-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .analysis-section h6 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .concept-tag {
+            display: inline-block;
+            background: var(--accent-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            margin: 0.25rem;
+            font-size: 0.875rem;
+        }
+
+        .expansion-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .expansion-card h6 {
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-book-half me-2"></i>论文阅读助手
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#helpModal">
+                            <i class="bi bi-question-circle me-1"></i>帮助
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <!-- 左侧面板 -->
+            <div class="col-lg-3 mb-4">
+                <!-- 文档上传 -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <i class="bi bi-upload me-2"></i>上传文档
+                    </div>
+                    <div class="card-body">
+                        <div class="upload-area" id="uploadArea">
+                            <i class="bi bi-cloud-upload display-4 text-primary mb-3"></i>
+                            <p class="mb-2">拖拽文件到此处或点击上传</p>
+                            <p class="text-muted small">支持 PDF 和 DOCX 格式</p>
+                            <input type="file" id="fileInput" accept=".pdf,.docx" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文档列表 -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-files me-2"></i>文档列表</span>
+                        <span class="badge bg-primary" id="documentCount">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="documentList">
+                            <p class="text-muted text-center small">暂无文档</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧面板 -->
+            <div class="col-lg-9">
+                <!-- 功能标签页 -->
+                <ul class="nav nav-tabs mb-3" id="functionTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat" type="button">
+                            <i class="bi bi-chat-dots me-2"></i>智能问答
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="search-tab" data-bs-toggle="tab" data-bs-target="#search" type="button">
+                            <i class="bi bi-search me-2"></i>关键词搜索
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button">
+                            <i class="bi bi-file-text me-2"></i>论文摘要
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="deepread-tab" data-bs-toggle="tab" data-bs-target="#deepread" type="button">
+                            <i class="bi bi-book me-2"></i>精读论文
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="expansion-tab" data-bs-toggle="tab" data-bs-target="#expansion" type="button">
+                            <i class="bi bi-diagram-3 me-2"></i>知识发散
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- 标签页内容 -->
+                <div class="tab-content">
+                    <!-- 智能问答 -->
+                    <div class="tab-pane fade show active" id="chat" role="tabpanel">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="chat-container mb-3" id="chatContainer">
+                                    <div class="text-center text-muted mt-5">
+                                        <i class="bi bi-chat-square-text display-4 mb-3"></i>
+                                        <p>开始与论文对话吧！</p>
+                                    </div>
+                                </div>
+                                <div class="loading" id="chatLoading">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">加载中...</span>
+                                    </div>
+                                    <p class="mt-2">正在思考...</p>
+                                </div>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="questionInput" placeholder="输入您的问题...">
+                                    <button class="btn btn-primary" id="sendQuestion">
+                                        <i class="bi bi-send"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 关键词搜索 -->
+                    <div class="tab-pane fade" id="search" role="tabpanel">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="searchInput" placeholder="输入关键词搜索...">
+                                    <button class="btn btn-primary" id="searchButton">
+                                        <i class="bi bi-search"></i> 搜索
+                                    </button>
+                                </div>
+                                <div id="searchResults">
+                                    <p class="text-muted text-center">输入关键词开始搜索</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 论文摘要 -->
+                    <div class="tab-pane fade" id="summary" role="tabpanel">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">选择文档</label>
+                                    <select class="form-select" id="summaryDocumentSelect">
+                                        <option value="">请选择文档</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-primary mb-3" id="generateSummary">
+                                    <i class="bi bi-file-text me-2"></i>生成摘要
+                                </button>
+                                <div class="loading" id="summaryLoading">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">加载中...</span>
+                                    </div>
+                                    <p class="mt-2">正在生成摘要...</p>
+                                </div>
+                                <div id="summaryResult">
+                                    <p class="text-muted text-center">选择文档并点击生成摘要</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 精读论文 -->
+                    <div class="tab-pane fade" id="deepread" role="tabpanel">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">选择文档</label>
+                                    <select class="form-select" id="deepreadDocumentSelect">
+                                        <option value="">请选择文档</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-primary mb-3" id="startDeepRead">
+                                    <i class="bi bi-book me-2"></i>开始精读
+                                </button>
+                                <div class="loading" id="deepreadLoading">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">加载中...</span>
+                                    </div>
+                                    <p class="mt-2">正在深度分析...</p>
+                                </div>
+                                <div id="deepreadResult">
+                                    <p class="text-muted text-center">选择文档并开始精读分析</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 知识发散 -->
+                    <div class="tab-pane fade" id="expansion" role="tabpanel">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">选择文档</label>
+                                    <select class="form-select" id="expansionDocumentSelect">
+                                        <option value="">请选择文档</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">研究主题</label>
+                                    <input type="text" class="form-control" id="expansionTopic" placeholder="输入研究主题或关键词">
+                                </div>
+                                <button class="btn btn-primary mb-3" id="startExpansion">
+                                    <i class="bi bi-diagram-3 me-2"></i>开始知识发散
+                                </button>
+                                <div class="loading" id="expansionLoading">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">加载中...</span>
+                                    </div>
+                                    <p class="mt-2">正在分析知识关联...</p>
+                                </div>
+                                <div id="expansionResult">
+                                    <p class="text-muted text-center">选择文档和主题开始知识发散分析</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 帮助模态框 -->
+    <div class="modal fade" id="helpModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-question-circle me-2"></i>使用帮助
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>功能介绍</h6>
+                    <ul>
+                        <li><strong>智能问答</strong>：基于论文内容回答您的问题</li>
+                        <li><strong>关键词搜索</strong>：快速查找论文相关内容</li>
+                        <li><strong>论文摘要</strong>：自动生成论文摘要</li>
+                        <li><strong>精读论文</strong>：深度分析论文的各个方面</li>
+                        <li><strong>知识发散</strong>：发现相关研究方向和概念</li>
+                    </ul>
+                    <h6>使用步骤</h6>
+                    <ol>
+                        <li>上传PDF或DOCX格式的论文文档</li>
+                        <li>等待文档处理完成</li>
+                        <li>选择相应的功能开始分析</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast align-items-center text-white bg-primary border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMessage"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
